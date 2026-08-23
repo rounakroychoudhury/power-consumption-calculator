@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Power Consumption Calculator{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h1>⚡ Power Calculator</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">Calculator</a></li>
+                <li><a href="/history" class="nav-link">History</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        {% block content %}
+        <!-- Content goes here - replaced by child templates -->
+        {% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2024 Power Consumption Calculator | Built with ❤️ by Rounak</p>
+    </footer>
+</body>
+</html>

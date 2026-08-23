@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Calculator - Power Consumption Calculator{% endblock %}
+
+{% block content %}
+<div class="calculator-section">
+    <h2>Power Consumption Calculator</h2>
+    <p class="subtitle">Enter your electrical parameters to calculate power consumption</p>
+
+    <!-- Calculator Form -->
+    <div class="card">
+        <form id="calculatorForm" class="calculator-form">
+            
+            <!-- Circuit Type Selection -->
+            <div class="form-group">
+                <label for="circuit_type">Circuit Type <span class="required">*</span></label>
+                <select id="circuit_type" name="circuit_type" required>
+                    <option value="">-- Select Circuit Type --</option>
+                    <option value="single_phase">Single-Phase AC (230V household)</option>
+                    <option value="three_phase">Three-Phase AC (Industrial)</option>
+                    <option value="dc">DC Circuit (Battery/Solar)</option>
+                </select>
+                <small class="help-text">Choose based on your electrical system</small>
+            </div>
+
+            <!-- Voltage Input -->
+            <div class="form-group">
+                <label for="voltage">Voltage <span class="required">*</span></label>
+                <div class="input-group">
+                    <input type="number" id="voltage" name="voltage" 
+                           placeholder="e.g., 230" step="0.1" min="0" required>
+                    <span class="unit">Volts (V)</span>
+                </div>
+                <small class="help-text">Single-Phase: 230V, Three-Phase: 415V</small>
+            </div>
+
+            <!-- Current Input -->
+            <div class="form-group">
+                <label for="current">Current <span class="required">*</span></label>
+                <div class="input-group">
+                    <input type="number" id="current" name="current" 
+                           placeholder="e.g., 10" step="0.1" min="0" required>
+                    <span class="unit">Amperes (A)</span>
+                </div>
+                <small class="help-text">Typical household: 5-15A</small>
+            </div>
+
+            <!-- Power Factor Input (AC only) -->
+            <div class="form-group" id="pf-group">
+                <label for="power_factor">Power Factor</label>
+                <div class="input-group">
+                    <input type="number" id="power_factor" name="power_factor" 
+                           placeholder="e.g., 0.8" step="0.01" min="0" max="1" value="0.8">
+                    <span class="unit">(0 - 1)</span>
+                </div>
+                <small class="help-text">Typical values: 0.7-0.95. Lower = less efficient</small>
+            </div>
+
+            <!-- Duration Input -->
+            <div class="form-group">
+                <label for="duration">Duration <span class="required">*</span></label>
+                <div class="input-group">
+                    <input type="number" id="duration" name="duration" 
+                           placeholder="e.g., 5" step="0.1" min="0" required>
+                    <span class="unit">Hours (h)</span>
+                </div>
+                <small class="help-text">How long the device operates</small>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn btn-primary">Calculate Power</button>
+        </form>
+    </div>
+
+    <!-- Results Section (Hidden by default) -->
+    <div id="results" class="card results-card" style="display: none;">
+        <h3>Calculation Results</h3>
+        
+        <div class="results-grid">
+            <!-- Input Summary -->
+            <div class="result-box">
+                <h4>Input Parameters</h4>
+                <p><strong>Circuit Type:</strong> <span id="r-circuit"></span></p>
+                <p><strong>Voltage:</strong> <span id="r-voltage"></span> V</p>
+                <p><strong>Current:</strong> <span id="r-current"></span> A</p>
+                <p id="r-pf-line"><strong>Power Factor:</strong> <span id="r-pf"></span></p>
+                <p><strong>Duration:</strong> <span id="r-duration"></span> h</p>
+            </div>
+
+            <!-- Real Power -->
+            <div class="result-box highlight-yellow">
+                <h4>⚡ Real Power (P)</h4>
+                <p class="result-value"><span id="r-real-power-kw"></span> <span class="unit">kW</span></p>
+                <p class="result-small"><span id="r-real-power-w"></span> W</p>
+                <small>Useful power that does work</small>
+            </div>
+
+            <!-- Reactive Power (AC only) -->
+            <div class="result-box highlight-blue" id="r-reactive-box">
+                <h4>🔄 Reactive Power (Q)</h4>
+                <p class="result-value"><span id="r-reactive-power-kvar"></span> <span class="unit">kVAR</span></p>
+                <p class="result-small"><span id="r-reactive-power-var"></span> VAR</p>
+                <small>Power wasted due to inductance</small>
+            </div>
+
+            <!-- Apparent Power -->
+            <div class="result-box highlight-purple">
+                <h4>📊 Apparent Power (S)</h4>
+                <p class="result-value"><span id="r-apparent-power-kva"></span> <span class="unit">kVA</span></p>
+                <p class="result-small"><span id="r-apparent-power-va"></span> VA</p>
+                <small>Total power supplied</small>
+            </div>
+
+            <!-- Energy Consumed -->
+            <div class="result-box highlight-green">
+                <h4>🔋 Energy Consumed (E)</h4>
+                <p class="result-value"><span id="r-energy-kwh"></span> <span class="unit">kWh</span></p>
+                <p class="result-small"><span id="r-energy-wh"></span> Wh</p>
+                <small>Total energy used</small>
+            </div>
+        </div>
+
+        <p class="timestamp">Saved at: <span id="r-timestamp"></span></p>
+    </div>
+
+    <!-- Error Message (Hidden by default) -->
+    <div id="error" class="card error-card" style="display: none;">
+        <p id="error-message"></p>
+    </div>
+
+    <!-- Loading Spinner (Hidden by default) -->
+    <div id="loading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+        <p>Calculating...</p>
+    </div>
+</div>
+
+<!-- JavaScript for Form Handling -->
+<script>
+// Show/hide power factor field based on circuit type
+document.getElementById('circuit_type').addEventListener('change', function() {
+    const pfGroup = document.getElementById('pf-group');
+    if (this.value === 'dc') {
+        pfGroup.style.display = 'none';
+    } else {
+        pfGroup.style.display = 'block';
+    }
+});
+
+// Handle Form Submission
+document.getElementById('calculatorForm').addEventListener('submit', async function(e) {
+    e.preventDefault(); // Prevent page reload
+    
+    // Show loading indicator
+    document.getElementById('loading').style.display = 'flex';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('error').style.display = 'none';
+    
+    // Get form data
+    const formData = new FormData(this);
+    
+    try {
+        // Send data to Flask backend
+        const response = await fetch('/calculate', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        // Hide loading
+        document.getElementById('loading').style.display = 'none';
+        
+        if (data.success) {
+            // Display results
+            displayResults(data.result);
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+        } else {
+            // Display error
+            displayError(data.error);
+        }
+    } catch (error) {
+        document.getElementById('loading').style.display = 'none';
+        displayError('An error occurred: ' + error.message);
+    }
+});
+
+// Function to Display Results
+function displayResults(result) {
+    // Input parameters
+    document.getElementById('r-circuit').textContent = result.circuit_type;
+    document.getElementById('r-voltage').textContent = result.voltage;
+    document.getElementById('r-current').textContent = result.current;
+    document.getElementById('r-duration').textContent = result.duration;
+    document.getElementById('r-timestamp').textContent = result.timestamp;
+    
+    // Power Factor (hide if DC)
+    if (result.circuit_type === 'DC') {
+        document.getElementById('r-pf-line').style.display = 'none';
+        document.getElementById('r-reactive-box').style.display = 'none';
+    } else {
+        document.getElementById('r-pf-line').style.display = 'block';
+        document.getElementById('r-reactive-box').style.display = 'block';
+        document.getElementById('r-pf').textContent = result.power_factor;
+        document.getElementById('r-reactive-power-kvar').textContent = result.reactive_power_kvar;
+        document.getElementById('r-reactive-power-var').textContent = result.reactive_power_var;
+    }
+    
+    // Real Power
+    document.getElementById('r-real-power-kw').textContent = result.real_power_kw;
+    document.getElementById('r-real-power-w').textContent = result.real_power_w;
+    
+    // Apparent Power
+    document.getElementById('r-apparent-power-kva').textContent = result.apparent_power_kva;
+    document.getElementById('r-apparent-power-va').textContent = result.apparent_power_va;
+    
+    // Energy
+    document.getElementById('r-energy-kwh').textContent = result.energy_kwh;
+    document.getElementById('r-energy-wh').textContent = result.energy_wh;
+}
+
+// Function to Display Error
+function displayError(message) {
+    document.getElementById('error-message').textContent = message;
+    document.getElementById('error').style.display = 'block';
+}
+</script>
+{% endblock %}
